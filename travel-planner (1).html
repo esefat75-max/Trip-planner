@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ট্রিপ প্ল্যানার</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffc9de;
+    --card: #fffafc;
+    --ink: #3a0a29;
+    --muted: #8a4a6c;
+    --line: #3a0a29;
+    --brand: #e0116f;
+    --brand-ink: #ffffff;
+    --alert: #b4231f;
+    --stub: #ffe3ef;
+    --sun: #ffd23f;
+    --shadow: 4px 4px 0 var(--ink);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: "Hind Siliguri", system-ui, sans-serif;
+    background-color: var(--bg);
+    background-image: radial-gradient(#f59ec2 1.4px, transparent 1.6px);
+    background-size: 22px 22px;
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    min-height: 100vh;
+  }
+  header.top {
+    background: var(--ink);
+    color: #ffd6e8;
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 4px solid var(--brand);
+  }
+  header.top h1 { font-size: 22px; margin: 0; font-weight: 700; flex: 1; letter-spacing: .2px; }
+  header.top h1::before { content: "✈"; display: inline-block; margin-right: 8px; transform: rotate(-12deg); color: var(--sun); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; box-shadow: 0 0 0 5px var(--ink); }
+  .btn {
+    background: var(--brand); color: var(--brand-ink);
+    border: 2px solid var(--ink); border-radius: 10px; padding: 8px 16px; font-weight: 700;
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+  .btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+  .btn.ghost { background: #fff; color: var(--ink); }
+  .btn.dark-ghost { background: var(--sun); color: var(--ink); border-color: #ffd6e8; box-shadow: 3px 3px 0 #ffd6e8; }
+  .btn.small { padding: 4px 10px; font-size: 14px; box-shadow: 2px 2px 0 var(--ink); }
+  .btn.danger { background: #fff; color: var(--alert); border-color: var(--alert); box-shadow: 2px 2px 0 var(--alert); }
+  main { max-width: 1100px; margin: 0 auto; padding: 18px; }
+  .hidden { display: none !important; }
+
+  /* Home */
+  .panel { background: var(--card); border: 2px solid var(--ink); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); }
+  .panel h2 { margin: 0 0 12px; font-size: 19px; display: inline-block; background: var(--sun); padding: 0 10px; border: 2px solid var(--ink); border-radius: 8px; transform: rotate(-1.5deg); }
+  .grid-form { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); font-weight: 500; }
+  input, select, textarea {
+    border: 2px solid var(--ink); border-radius: 10px; padding: 8px 10px; background: #fff; width: 100%;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .trip-list { display: grid; gap: 16px; margin-top: 22px; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); }
+  .trip-card {
+    background: var(--card); border: 2px solid var(--ink); border-radius: 16px;
+    padding: 0; display: flex; overflow: hidden; text-align: left; width: 100%;
+    box-shadow: var(--shadow); position: relative;
+  }
+  .trip-card:hover { transform: translate(-1px, -1px) rotate(-.4deg); }
+  .trip-card .stub {
+    background: var(--brand); color: #fff; padding: 14px 12px; min-width: 70px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border-right: 3px dashed var(--ink); font-weight: 700; text-align: center; font-size: 13px;
+  }
+  .trip-card .stub b { font-size: 28px; line-height: 1.1; }
+  .trip-card .body { padding: 12px 14px; flex: 1; }
+  .trip-card h3 { margin: 0; font-size: 18px; }
+  .trip-card p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .empty { color: var(--ink); text-align: center; padding: 28px 10px; font-weight: 500; }
+
+  /* Trip view */
+  .trip-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .trip-head h2 { margin: 0; font-size: 24px; flex: 1; min-width: 160px; }
+  .layout { display: grid; gap: 18px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .layout { grid-template-columns: 1.1fr 1fr; align-items: start; } .map-col { position: sticky; top: 12px; } }
+  #map { height: 340px; border-radius: 16px; border: 3px solid var(--ink); box-shadow: var(--shadow); z-index: 0; background: #1b2a2f; }
+  @media (min-width: 900px) { #map { height: 560px; } }
+  .search { display: flex; gap: 8px; margin-bottom: 10px; }
+  .hint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+  .days { display: flex; gap: 8px; overflow-x: auto; padding: 2px 4px 10px 2px; margin-bottom: 4px; }
+  .day {
+    flex: 0 0 auto; border: 2px solid var(--ink); background: #fff; border-radius: 12px;
+    padding: 5px 12px; text-align: center; font-size: 13px; line-height: 1.3; box-shadow: 2px 2px 0 var(--ink);
+  }
+  .day b { display: block; font-size: 16px; }
+  .day[aria-selected="true"] { background: var(--brand); color: #fff; transform: translateY(-2px); }
+  .items { display: grid; gap: 14px; margin: 10px 0 18px; }
+  .item {
+    display: flex; background: var(--card); border: 2px solid var(--ink); border-radius: 14px;
+    overflow: hidden; box-shadow: var(--shadow); position: relative;
+  }
+  .item .time {
+    background: var(--stub); padding: 10px 12px; min-width: 82px; text-align: center;
+    border-right: 3px dashed var(--ink); display: flex; flex-direction: column; justify-content: center;
+    font-weight: 700; font-size: 18px; color: var(--brand);
+  }
+  .item .time small { font-weight: 600; color: var(--ink); font-size: 12px; }
+  .item .main { padding: 10px 12px; flex: 1; min-width: 0; }
+  .item .main h4 { margin: 0; font-size: 17px; }
+  .item.done { opacity: .65; }
+  .item.done h4 { text-decoration: line-through; }
+  .item .note { margin: 2px 0 0; color: var(--muted); font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .tag { font-size: 12px; background: #fff; border: 1.5px solid var(--ink); border-radius: 999px; padding: 0 9px; }
+  .tag.bell { background: var(--sun); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+  .pin { background: var(--brand); color: #fff; border: 3px solid #fff; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+    width: 32px; height: 32px; display: grid; place-items: center; font-weight: 700; font-size: 14px;
+    box-shadow: 0 0 0 2px var(--ink), 2px 3px 6px #0008; }
+  .pin > span { transform: rotate(45deg); display: block; }
+  .pin.pending { background: var(--sun); color: var(--ink); }
+  .leaflet-popup-content-wrapper { border: 2px solid var(--ink); border-radius: 12px; font-family: inherit; }
+
+  /* Alarm overlay */
+  .overlay { position: fixed; inset: 0; background: #3a0a29dd; display: grid; place-items: center; z-index: 2000; padding: 18px; }
+  .alarm-box { background: var(--card); border: 3px solid var(--ink); border-radius: 20px; padding: 26px; max-width: 380px; width: 100%; text-align: center; box-shadow: 6px 6px 0 var(--brand); }
+  .alarm-box::before { content: "⏰"; display: block; font-size: 44px; }
+  .alarm-box h3 { margin: 0 0 6px; font-size: 24px; }
+  .alarm-box p { margin: 4px 0 16px; color: var(--muted); }
+  .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #ffd6e8;
+    padding: 10px 16px; border-radius: 12px; z-index: 3000; font-size: 15px; max-width: 90vw; border: 2px solid var(--brand); }
+  @media (prefers-reduced-motion: reduce) { .trip-card:hover, .day[aria-selected="true"] { transform: none; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>ট্রিপ প্ল্যানার</h1>
+  <button class="btn dark-ghost small" id="notifBtn" type="button">অ্যালার্ম চালু করুন</button>
+</header>
+
+<main>
+  <!-- হোম -->
+  <section id="home">
+    <div class="panel">
+      <h2>নতুন ট্রিপ</h2>
+      <form id="tripForm">
+        <div class="grid-form">
+          <label class="f">ট্রিপের নাম
+            <input id="tName" required placeholder="যেমন: আমেরিকা ভ্রমণ">
+          </label>
+          <label class="f">শহর (ইংরেজিতে)
+            <input id="tCity" required placeholder="যেমন: New York, USA">
+          </label>
+          <label class="f">শুরুর তারিখ
+            <input id="tStart" type="date" required>
+          </label>
+          <label class="f">শেষের তারিখ
+            <input id="tEnd" type="date" required>
+          </label>
+        </div>
+        <div style="margin-top:12px"><button class="btn" type="submit" id="tripSubmit">ট্রিপ তৈরি করুন</button></div>
+      </form>
+    </div>
+    <div id="tripList" class="trip-list"></div>
+  </section>
+
+  <!-- ট্রিপ -->
+  <section id="trip" class="hidden">
+    <div class="trip-head">
+      <button class="btn ghost small" id="backBtn" type="button">সব ট্রিপ</button>
+      <h2 id="tripTitle"></h2>
+      <button class="btn danger small" id="delTripBtn" type="button">ট্রিপ মুছুন</button>
+    </div>
+
+    <div class="layout">
+      <div class="map-col">
+        <form class="search" id="searchForm">
+          <input id="searchInput" placeholder="জায়গা খুঁজুন, যেমন: Statue of Liberty" aria-label="জায়গা খুঁজুন">
+          <button class="btn" type="submit">খুঁজুন</button>
+        </form>
+        <div id="map"></div>
+        <p class="hint">ম্যাপে ট্যাপ করলে পিন বসবে। তারপর নিচের ফর্মে কাজ যোগ করলে পিনটা সেই কাজের সঙ্গে জুড়ে যাবে।</p>
+      </div>
+
+      <div>
+        <div class="days" id="days" role="tablist"></div>
+        <div class="items" id="items"></div>
+
+        <div class="panel">
+          <h2>কাজ যোগ করুন</h2>
+          <form id="itemForm">
+            <div class="grid-form">
+              <label class="f">সময়
+                <input id="iTime" type="time" required>
+              </label>
+              <label class="f">অ্যালার্ম
+                <select id="iAlarm">
+                  <option value="-1">লাগবে না</option>
+                  <option value="0">ঠিক সময়ে</option>
+                  <option value="10">১০ মিনিট আগে</option>
+                  <option value="30" selected>৩০ মিনিট আগে</option>
+                  <option value="60">১ ঘণ্টা আগে</option>
+                  <option value="120">২ ঘণ্টা আগে</option>
+                </select>
+              </label>
+            </div>
+            <label class="f" style="margin-top:10px">কী করবেন
+              <input id="iTitle" required placeholder="যেমন: স্ট্যাচু অব লিবার্টি দেখা">
+            </label>
+            <label class="f" style="margin-top:10px">নোট
+              <textarea id="iNote" placeholder="টিকিট, খরচ, মনে রাখার বিষয়..."></textarea>
+            </label>
+            <p class="hint" id="pinStatus">কোনো পিন বাছা হয়নি (ঐচ্ছিক)</p>
+            <div style="margin-top:10px; display:flex; gap:8px">
+              <button class="btn" type="submit">যোগ করুন</button>
+              <button class="btn ghost" type="button" id="clearPin">পিন বাদ দিন</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="alarmOverlay" class="overlay hidden" role="alertdialog" aria-modal="true" aria-labelledby="alarmTitle">
+  <div class="alarm-box">
+    <h3 id="alarmTitle"></h3>
+    <p id="alarmText"></p>
+    <button class="btn" id="alarmOk" type="button">ঠিক আছে</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------- স্টোরেজ ----------
+  var KEY = "tripPlannerV1";
+  var state = { trips: [] };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) state = JSON.parse(raw);
+    if (!state.trips) state.trips = [];
+  } catch (e) { state = { trips: [] }; }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  // ---------- হেল্পার ----------
+  var $ = function (s) { return document.querySelector(s); };
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function parseDate(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function fmtDate(d) {
+    var m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+  function bn(n) { return Number(n).toLocaleString("bn-BD", { useGrouping: false }); }
+  function daysBetween(a, b) {
+    var out = [], d = parseDate(a), end = parseDate(b), guard = 0;
+    while (d <= end && guard++ < 60) { out.push(fmtDate(d)); d.setDate(d.getDate() + 1); }
+    return out;
+  }
+  function timeLabel(t) {
+    var p = t.split(":"), h = +p[0], m = p[1];
+    var suffix = h < 12 ? "সকাল" : h < 16 ? "দুপুর" : h < 18 ? "বিকাল" : h < 20 ? "সন্ধ্যা" : "রাত";
+    var h12 = h % 12 === 0 ? 12 : h % 12;
+    return { main: bn(h12) + ":" + bn(m), sub: suffix };
+  }
+  function toast(msg) {
+    var t = document.createElement("div");
+    t.className = "toast"; t.textContent = msg; t.setAttribute("role", "status");
+    document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 3200);
+  }
+  var ALARM_LABEL = { "0": "ঠিক সময়ে", "10": "১০ মিনিট আগে", "30": "৩০ মিনিট আগে", "60": "১ ঘণ্টা আগে", "120": "২ ঘণ্টা আগে" };
+
+  // ---------- জিওকোডিং (OpenStreetMap Nominatim) ----------
+  function geocode(q) {
+    return fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(q))
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res.length) return null;
+        return { lat: +res[0].lat, lng: +res[0].lon, name: res[0].display_name };
+      });
+  }
+
+  // ---------- ম্যাপ ----------
+  var map = null, layer = null, pendingMarker = null, pending = null;
+  function ensureMap() {
+    if (map) return;
+    map = L.map("map");
+    // স্যাটেলাইট ম্যাপ (Esri World Imagery) + উপরে রাস্তা ও জায়গার নামের লেবেল
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19, attribution: "Tiles © Esri, Maxar, Earthstar Geographics"
+    }).addTo(map);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19
+    }).addTo(map);
+    layer = L.layerGroup().addTo(map);
+    map.on("click", function (e) {
+      setPending({ lat: e.latlng.lat, lng: e.latlng.lng, place: "ম্যাপে বাছা পিন" });
+    });
+  }
+  function pinIcon(label, cls) {
+    return L.divIcon({
+      className: "", html: '<div class="pin ' + (cls || "") + '"><span>' + label + "</span></div>",
+      iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -30]
+    });
+  }
+  function setPending(p) {
+    pending = p;
+    if (pendingMarker) { map.removeLayer(pendingMarker); pendingMarker = null; }
+    if (p) {
+      pendingMarker = L.marker([p.lat, p.lng], { icon: pinIcon("+", "pending") }).addTo(map);
+      $("#pinStatus").textContent = "পিন বাছা হয়েছে: " + p.place;
+    } else {
+      $("#pinStatus").textContent = "কোনো পিন বাছা হয়নি (ঐচ্ছিক)";
+    }
+  }
+
+  // ---------- ভিউ ----------
+  var currentId = null, activeDate = null;
+  function currentTrip() { return state.trips.filter(function (t) { return t.id === currentId; })[0]; }
+
+  function renderHome() {
+    var list = $("#tripList");
+    if (!state.trips.length) {
+      list.innerHTML = '<div class="empty" style="grid-column:1/-1">এখনো কোনো ট্রিপ নেই। উপরে প্রথম ট্রিপটা তৈরি করুন।</div>';
+      return;
+    }
+    list.innerHTML = state.trips.map(function (t) {
+      var n = daysBetween(t.start, t.end).length;
+      var d = parseDate(t.start);
+      return '<button class="trip-card" data-id="' + t.id + '" type="button">' +
+        '<div class="stub"><b>' + bn(n) + '</b>দিন</div>' +
+        '<div class="body"><h3>' + esc(t.name) + '</h3><p>' + esc(t.city) + '</p>' +
+        '<p>' + d.toLocaleDateString("bn-BD", { day: "numeric", month: "long", year: "numeric" }) + ' থেকে</p></div></button>';
+    }).join("");
+  }
+
+  function openTrip(id) {
+    currentId = id;
+    var t = currentTrip();
+    if (!t) return;
+    $("#home").classList.add("hidden");
+    $("#trip").classList.remove("hidden");
+    $("#tripTitle").textContent = t.name + " · " + t.city;
+    var ds = daysBetween(t.start, t.end);
+    var today = fmtDate(new Date());
+    activeDate = ds.indexOf(today) >= 0 ? today : ds[0];
+    ensureMap();
+    setPending(null);
+    map.setView(t.center || [20, 0], t.center ? 12 : 2);
+    setTimeout(function () { map.invalidateSize(); renderTrip(); }, 50);
+    renderTrip();
+  }
+
+  function renderTrip() {
+    var t = currentTrip();
+    if (!t) return;
+    var ds = daysBetween(t.start, t.end);
+    $("#days").innerHTML = ds.map(function (d, i) {
+      var dt = parseDate(d);
+      return '<button class="day" role="tab" type="button" data-date="' + d + '" aria-selected="' + (d === activeDate) + '">' +
+        "দিন " + bn(i + 1) + "<b>" + dt.toLocaleDateString("bn-BD", { day: "numeric", month: "short" }) + "</b></button>";
+    }).join("");
+
+    var items = t.items.filter(function (it) { return it.date === activeDate; })
+      .sort(function (a, b) { return a.time < b.time ? -1 : a.time > b.time ? 1 : 0; });
+
+    $("#items").innerHTML = items.length ? items.map(function (it, i) {
+      var tl = timeLabel(it.time);
+      var tags = "";
+      if (it.place) tags += '<span class="tag">' + esc(it.place) + "</span>";
+      if (it.alarm >= 0) tags += '<span class="tag bell">অ্যালার্ম: ' + ALARM_LABEL[String(it.alarm)] + "</span>";
+      return '<div class="item' + (it.done ? " done" : "") + '" data-id="' + it.id + '">' +
+        '<div class="time">' + tl.main + "<small>" + tl.sub + "</small></div>" +
+        '<div class="main"><h4>' + esc(it.title) + "</h4>" +
+        (it.note ? '<p class="note">' + esc(it.note) + "</p>" : "") +
+        (tags ? '<div class="tags">' + tags + "</div>" : "") +
+        '<div class="actions">' +
+        '<button class="btn ghost small" data-act="done" type="button">' + (it.done ? "আবার খুলুন" : "হয়ে গেছে") + "</button>" +
+        (it.lat != null ? '<button class="btn ghost small" data-act="fly" type="button">ম্যাপে দেখুন</button>' : "") +
+        '<button class="btn danger small" data-act="del" type="button">মুছুন</button>' +
+        "</div></div></div>";
+    }).join("") : '<div class="empty panel">এই দিনের জন্য কোনো প্ল্যান নেই। নিচের ফর্ম থেকে প্রথম কাজটা যোগ করুন।</div>';
+
+    // মার্কার
+    layer.clearLayers();
+    var pts = [];
+    items.forEach(function (it, i) {
+      if (it.lat == null) return;
+      L.marker([it.lat, it.lng], { icon: pinIcon(bn(i + 1)) })
+        .bindPopup("<b>" + esc(it.title) + "</b><br>" + esc(it.time)).addTo(layer);
+      pts.push([it.lat, it.lng]);
+    });
+    if (pts.length > 1) map.fitBounds(pts, { padding: [40, 40], maxZoom: 15 });
+    else if (pts.length === 1) map.setView(pts[0], 14);
+  }
+
+  // ---------- ইভেন্ট ----------
+  $("#tripForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = $("#tName").value.trim(), city = $("#tCity").value.trim();
+    var start = $("#tStart").value, end = $("#tEnd").value;
+    if (end < start) { toast("শেষের তারিখ শুরুর আগে হতে পারে না"); return; }
+    var btn = $("#tripSubmit"); btn.disabled = true; btn.textContent = "শহর খোঁজা হচ্ছে...";
+    geocode(city).catch(function () { return null; }).then(function (g) {
+      var trip = {
+        id: uid(), name: name, city: city, start: start, end: end,
+        center: g ? [g.lat, g.lng] : null, items: []
+      };
+      state.trips.push(trip); save();
+      btn.disabled = false; btn.textContent = "ট্রিপ তৈরি করুন";
+      $("#tripForm").reset();
+      if (!g) toast("শহরটা ম্যাপে পাওয়া যায়নি, তবে ট্রিপ তৈরি হয়েছে");
+      renderHome(); openTrip(trip.id);
+    });
+  });
+
+  $("#tripList").addEventListener("click", function (e) {
+    var c = e.target.closest(".trip-card");
+    if (c) openTrip(c.getAttribute("data-id"));
+  });
+
+  $("#backBtn").addEventListener("click", function () {
+    $("#trip").classList.add("hidden"); $("#home").classList.remove("hidden");
+    currentId = null; renderHome();
+  });
+
+  $("#delTripBtn").addEventListener("click", function () {
+    if (!confirm("এই ট্রিপ আর এর সব প্ল্যান মুছে ফেলবেন?")) return;
+    state.trips = state.trips.filter(function (t) { return t.id !== currentId; });
+    save(); $("#backBtn").click();
+  });
+
+  $("#days").addEventListener("click", function (e) {
+    var b = e.target.closest(".day");
+    if (!b) return;
+    activeDate = b.getAttribute("data-date");
+    renderTrip();
+  });
+
+  $("#searchForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var q = $("#searchInput").value.trim();
+    if (!q) return;
+    var t = currentTrip();
+    geocode(q + (t ? ", " + t.city : "")).then(function (g) {
+      if (!g) return geocode(q);
+      return g;
+    }).then(function (g) {
+      if (!g) { toast("জায়গাটা পাওয়া যায়নি, অন্যভাবে লিখে দেখুন"); return; }
+      map.setView([g.lat, g.lng], 16);
+      setPending({ lat: g.lat, lng: g.lng, place: q });
+    }).catch(function () { toast("ইন্টারনেট সংযোগ চেক করুন"); });
+  });
+
+  $("#clearPin").addEventListener("click", function () { setPending(null); });
+
+  $("#itemForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var t = currentTrip(); if (!t) return;
+    var item = {
+      id: uid(), date: activeDate, time: $("#iTime").value,
+      title: $("#iTitle").value.trim(), note: $("#iNote").value.trim(),
+      alarm: parseInt($("#iAlarm").value, 10), done: false, fired: false,
+      lat: pending ? pending.lat : null, lng: pending ? pending.lng : null,
+      place: pending ? pending.place : ""
+    };
+    t.items.push(item); save();
+    $("#itemForm").reset(); $("#iAlarm").value = "30";
+    setPending(null); renderTrip();
+    if (item.alarm >= 0) askNotifPermission();
+    toast("প্ল্যানে যোগ হয়েছে");
+  });
+
+  $("#items").addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-act]");
+    if (!btn) return;
+    var id = btn.closest(".item").getAttribute("data-id");
+    var t = currentTrip();
+    var it = t.items.filter(function (x) { return x.id === id; })[0];
+    var act = btn.getAttribute("data-act");
+    if (act === "del") { t.items = t.items.filter(function (x) { return x.id !== id; }); }
+    if (act === "done") { it.done = !it.done; }
+    if (act === "fly" && it.lat != null) { map.setView([it.lat, it.lng], 16); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    save(); renderTrip();
+  });
+
+  // ---------- অ্যালার্ম ----------
+  var audioCtx = null;
+  function getAudio() {
+    if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+  document.addEventListener("click", getAudio, { once: true });
+
+  function beep() {
+    var ctx = getAudio(); if (!ctx) return;
+    for (var i = 0; i < 4; i++) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+      var t0 = ctx.currentTime + i * 0.5;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.4, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35);
+      o.start(t0); o.stop(t0 + 0.4);
+    }
+    if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]);
+  }
+
+  function askNotifPermission() {
+    getAudio();
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission().then(updateNotifBtn);
+    }
+  }
+  function updateNotifBtn() {
+    var b = $("#notifBtn");
+    if (!("Notification" in window)) { b.textContent = "অ্যালার্ম: পেজের ভেতরে"; return; }
+    b.textContent = Notification.permission === "granted" ? "অ্যালার্ম চালু আছে" : "অ্যালার্ম চালু করুন";
+  }
+  $("#notifBtn").addEventListener("click", function () { askNotifPermission(); beep(); });
+
+  var queue = [], showing = false;
+  function showNext() {
+    if (showing || !queue.length) return;
+    showing = true;
+    var a = queue.shift();
+    $("#alarmTitle").textContent = a.title;
+    $("#alarmText").textContent = a.when;
+    $("#alarmOverlay").classList.remove("hidden");
+    $("#alarmOk").focus();
+    beep();
+  }
+  $("#alarmOk").addEventListener("click", function () {
+    $("#alarmOverlay").classList.add("hidden");
+    showing = false; showNext();
+  });
+
+  function checkAlarms() {
+    var now = Date.now(), changed = false;
+    state.trips.forEach(function (t) {
+      t.items.forEach(function (it) {
+        if (it.alarm < 0 || it.fired || it.done) return;
+        var p = it.date.split("-"), tm = it.time.split(":");
+        var at = new Date(+p[0], +p[1] - 1, +p[2], +tm[0], +tm[1]).getTime();
+        var due = at - it.alarm * 60000;
+        if (now >= due) {
+          it.fired = true; changed = true;
+          // অনেক পুরনো হলে (৬ ঘণ্টার বেশি) শুধু মার্ক করে দেওয়া হয়, বাজানো হয় না
+          if (now - due > 6 * 3600 * 1000) return;
+          var tl = timeLabel(it.time);
+          var when = it.alarm === 0 ? "এখনই শুরু" : ALARM_LABEL[String(it.alarm)] + " · " + tl.sub + " " + tl.main;
+          queue.push({ title: it.title, when: when });
+          if ("Notification" in window && Notification.permission === "granted") {
+            try { new Notification(it.title, { body: when + " · " + t.city }); } catch (e) {}
+          }
+        }
+      });
+    });
+    if (changed) { save(); showNext(); }
+  }
+  setInterval(checkAlarms, 15000);
+  checkAlarms();
+
+  updateNotifBtn();
+  renderHome();
+})();
+</script>
+</body>
+</html>
